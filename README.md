@@ -14,7 +14,7 @@ Proxmox VE 实用脚本集。面向 PVE 母机的日常运维：VM 出网管控�
 - 所有脚本**幂等**：可重复执行，不产生重复规则或重复配置
 - 改动系统行为的脚本必须提供 **install / uninstall** 子命令：一键部署、干净回滚
 - 只依赖 PVE 系统自带工具（bash / systemd / iptables / ip6tables / sysctl），不引入第三方依赖
-- 兼容 PVE 7.x / 8.x（Debian 11 / 12）
+- 兼容 PVE 7.x / 8.x / 9.x（Debian 11 / 12 / 13）；vm-netguard 已在 **PVE 9.2**（kernel 7.0-pve，br_netfilter 内置）生产环境实测
 
 ## 快速取用
 
