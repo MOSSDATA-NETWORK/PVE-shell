@@ -1,6 +1,6 @@
 #!/bin/bash
 #
-# PVE 无订阅源切换 + 系统更新 + 去除「无有效订阅」弹窗（持久化）
+# PVE 无订阅源切换 + 去除「无有效订阅」弹窗（持久化）
 # 适用：Proxmox VE 7.x / 8.x / 9.x（Debian 11 / 12 / 13）
 #
 # 做的事：
@@ -15,7 +15,6 @@
 # 用法：
 #   bash pve-nosub.sh                 # 换源 + 去弹窗（默认不更新系统）
 #   bash pve-nosub.sh --upgrade       # 换源 + 去弹窗 + 更新系统到最新
-#   bash pve-nosub.sh --dry-run       # 只打印不写入
 #   bash pve-nosub.sh --restore       # 回滚到上次备份（含恢复弹窗）
 #
 
@@ -38,7 +37,6 @@ title() { echo -e "\n${CYAN}━━━ $* ━━━${NC}"; }
 # ============================================================
 # 全局变量
 # ============================================================
-DRY_RUN=false
 DO_UPGRADE=false
 BACKUP_DIR="/root/pve-nosub-backup/$(date +%Y%m%d_%H%M%S)"
 CODENAME=""
@@ -166,26 +164,18 @@ switch_repos() {
     for f in /etc/apt/sources.list.d/*.sources; do
         [[ -f "$f" ]] || continue
         grep -q "proxmox.com" "$f" || continue   # 跳过 debian.sources 等
-        if $DRY_RUN; then
-            info "[dry-run] 将处理 $f（禁用 enterprise / 启用 no-subscription）"
-        else
-            backup_file "$f"
-            fix_deb822_file "$f"
-            info "已处理: $f"
-        fi
+        backup_file "$f"
+        fix_deb822_file "$f"
+        info "已处理: $f"
     done
 
     # --- 2. 处理 .list 文件与 /etc/apt/sources.list（PVE 7/8） ---
     for f in /etc/apt/sources.list /etc/apt/sources.list.d/*.list; do
         [[ -f "$f" ]] || continue
         grep -q "proxmox.com" "$f" || continue
-        if $DRY_RUN; then
-            info "[dry-run] 将处理 $f（注释 enterprise / 取消注释 no-subscription）"
-        else
-            backup_file "$f"
-            fix_list_file "$f"
-            info "已处理: $f"
-        fi
+        backup_file "$f"
+        fix_list_file "$f"
+        info "已处理: $f"
     done
 
     # --- 3. ceph.list：按原有 enterprise 行补一条 no-subscription ---
@@ -197,12 +187,8 @@ switch_repos() {
             ceph_rel=$(echo "$ent_line" | grep -oE "ceph-[a-z]+" | head -1 || true)
             ceph_suite=$(echo "$ent_line" | awk '{print $3}' || true)
             if [[ -n "$ceph_rel" ]]; then
-                if $DRY_RUN; then
-                    info "[dry-run] 将向 ceph.list 追加 no-subscription 源（$ceph_rel）"
-                else
-                    echo "deb http://download.proxmox.com/debian/${ceph_rel} ${ceph_suite:-$CODENAME} no-subscription" >> "$f"
-                    info "已向 ceph.list 追加 no-subscription 源（$ceph_rel）"
-                fi
+                echo "deb http://download.proxmox.com/debian/${ceph_rel} ${ceph_suite:-$CODENAME} no-subscription" >> "$f"
+                info "已向 ceph.list 追加 no-subscription 源（$ceph_rel）"
             else
                 warn "ceph.list 中未找到 enterprise 行，无法推断 ceph 版本，跳过"
             fi
@@ -219,35 +205,21 @@ switch_repos() {
             signed_by=$(grep -m1 "^Signed-By:" /etc/apt/sources.list.d/pve-enterprise.sources | awk '{print $2}')
             [[ -n "$signed_by" ]] || signed_by="/usr/share/keyrings/proxmox-archive-keyring.gpg"
         fi
-        if $DRY_RUN; then
-            info "[dry-run] 将新建 /etc/apt/sources.list.d/proxmox.sources"
-            echo ""
-            printf "Types: deb\nURIs: http://download.proxmox.com/debian/pve\nSuites: %s\nComponents: pve-no-subscription\nSigned-By: %s\n" "$CODENAME" "$signed_by"
-            echo ""
-        else
-            cat > /etc/apt/sources.list.d/proxmox.sources <<EOF
+        cat > /etc/apt/sources.list.d/proxmox.sources <<EOF
 Types: deb
 URIs: http://download.proxmox.com/debian/pve
 Suites: ${CODENAME}
 Components: pve-no-subscription
 Signed-By: ${signed_by}
 EOF
-            mark_created /etc/apt/sources.list.d/proxmox.sources
-            info "已新建: /etc/apt/sources.list.d/proxmox.sources"
-        fi
+        mark_created /etc/apt/sources.list.d/proxmox.sources
+        info "已新建: /etc/apt/sources.list.d/proxmox.sources"
     else
         # PVE 7/8：传统 .list
-        if $DRY_RUN; then
-            info "[dry-run] 将新建 /etc/apt/sources.list.d/pve-no-subscription.list"
-            echo ""
-            echo "deb http://download.proxmox.com/debian/pve $CODENAME pve-no-subscription"
-            echo ""
-        else
-            echo "deb http://download.proxmox.com/debian/pve $CODENAME pve-no-subscription" \
-                > /etc/apt/sources.list.d/pve-no-subscription.list
-            mark_created /etc/apt/sources.list.d/pve-no-subscription.list
-            info "已新建: /etc/apt/sources.list.d/pve-no-subscription.list"
-        fi
+        echo "deb http://download.proxmox.com/debian/pve $CODENAME pve-no-subscription" \
+            > /etc/apt/sources.list.d/pve-no-subscription.list
+        mark_created /etc/apt/sources.list.d/pve-no-subscription.list
+        info "已新建: /etc/apt/sources.list.d/pve-no-subscription.list"
     fi
 }
 
@@ -301,13 +273,6 @@ PATCH_EOF
 remove_nag() {
     title "去除无订阅弹窗（含持久化钩子）"
 
-    if $DRY_RUN; then
-        info "[dry-run] 将安装补丁脚本 $NAG_HOOK_BIN"
-        info "[dry-run] 将安装 apt 钩子 $NAG_HOOK_APT"
-        info "[dry-run] 将立即执行一次补丁（proxmoxlib.js / pvemanagerlib.js）"
-        return
-    fi
-
     # 1. 安装补丁脚本
     nag_patch_script > "$NAG_HOOK_BIN"
     chmod +x "$NAG_HOOK_BIN"
@@ -333,15 +298,10 @@ EOF
 }
 
 # ============================================================
-# 系统更新
+# 系统更新（--upgrade 时执行）
 # ============================================================
 do_upgrade() {
     title "更新系统"
-
-    if $DRY_RUN; then
-        info "[dry-run] 将执行: apt-get update && apt-get dist-upgrade（全自动免交互）"
-        return
-    fi
 
     # 全自动免交互：
     #   DEBIAN_FRONTEND=noninteractive  跳过 debconf 提问
@@ -441,12 +401,8 @@ summary() {
     echo "  备份目录: ${BACKUP_DIR}"
     echo ""
 
-    if $DRY_RUN; then
-        warn "本次为 dry-run 模式，未实际写入任何文件"
-    else
-        info "回滚: bash $0 --restore"
-        info "弹窗去除需浏览器强制刷新（Ctrl+F5）后生效"
-    fi
+    info "回滚: bash $0 --restore"
+    info "弹窗去除需浏览器强制刷新（Ctrl+F5）后生效"
 }
 
 # ============================================================
@@ -464,10 +420,6 @@ main() {
                 do_restore
                 exit 0
                 ;;
-            --dry-run)
-                DRY_RUN=true
-                warn "dry-run 模式：只打印，不写入"
-                ;;
             --upgrade)
                 DO_UPGRADE=true
                 ;;
@@ -477,14 +429,12 @@ main() {
                 echo "选项:"
                 echo "  --upgrade      换源后执行系统更新（默认不更新）"
                 echo "                 全自动免交互：跳过变更日志阅读，配置冲突保留现有配置"
-                echo "  --dry-run      只打印将执行的操作，不写入"
                 echo "  --restore      回滚到上次备份（含恢复弹窗）"
                 echo "  --help, -h     显示帮助"
                 echo ""
                 echo "示例:"
                 echo "  bash $0                  # 换源 + 去弹窗（不更新系统）"
                 echo "  bash $0 --upgrade        # 换源 + 去弹窗 + 更新系统到最新"
-                echo "  bash $0 --dry-run        # 预览模式"
                 exit 0
                 ;;
             *)
@@ -496,10 +446,7 @@ main() {
     done
 
     check_env
-
-    if ! $DRY_RUN; then
-        mkdir -p "$BACKUP_DIR"
-    fi
+    mkdir -p "$BACKUP_DIR"
 
     switch_repos
     remove_nag
