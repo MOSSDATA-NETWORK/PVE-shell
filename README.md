@@ -28,21 +28,18 @@ sudo ./vm-netguard.sh install
 
 **pve-optimize.sh**（宿主机优化）：
 ```bash
-git clone https://github.com/MOSSDATA-NETWORK/PVE-shell.git
-cd PVE-shell
-
 # 预览（不写入，先看会改什么）
-sudo bash pve-optimize.sh --dry-run
+curl -fsSL https://raw.githubusercontent.com/MOSSDATA-NETWORK/PVE-shell/main/pve-optimize.sh | sudo bash -s -- --dry-run
 
 # 执行优化（自动检测区域、备份原配置）
-sudo bash pve-optimize.sh
+curl -fsSL https://raw.githubusercontent.com/MOSSDATA-NETWORK/PVE-shell/main/pve-optimize.sh | sudo bash
 
 # 海外服务器指定 NTP 区域
-sudo bash pve-optimize.sh --region intl
+curl -fsSL https://raw.githubusercontent.com/MOSSDATA-NETWORK/PVE-shell/main/pve-optimize.sh | sudo bash -s -- --region intl
 
 # 香港服务器（北京时间 + 本地 NTP）
-sudo bash pve-optimize.sh --region hk
+curl -fsSL https://raw.githubusercontent.com/MOSSDATA-NETWORK/PVE-shell/main/pve-optimize.sh | sudo bash -s -- --region hk
 
 # 回滚到上次备份
-sudo bash pve-optimize.sh --restore
+curl -fsSL https://raw.githubusercontent.com/MOSSDATA-NETWORK/PVE-shell/main/pve-optimize.sh | sudo bash -s -- --restore
 ```
