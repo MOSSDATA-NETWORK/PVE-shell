@@ -8,7 +8,7 @@ Proxmox VE 实用脚本集。面向 PVE 母机的日常运维：VM 出网管控�
 |---|---|---|
 | [vm-netguard](vm-netguard/) | VM 出网管控：禁 SMTP/BT 出站、按域名拦截恶意站点（SNI/DNS） | 幂等 / IPv4+IPv6 / 一键安装卸载 |
 | [pve-optimize.sh](pve-optimize.sh) | PVE 宿主机内核参数自适应优化：ulimit / sysctl / THP / CPU 调频 / KSM / IO 调度 / ZFS ARC / NTP | 按 CPU/内存自动分档 / 备份回滚 / 支持国内·香港·海外 NTP |
-| [pve-nosub.sh](pve-nosub.sh) | 切换 no-subscription 源 + 系统更新 + 去「无订阅」弹窗（apt 钩子持久化，升级后自动重补丁） | 幂等 / 兼容 deb822 与 .list / 备份回滚 |
+| [pve-nosub.sh](pve-nosub.sh) | 切换 no-subscription 源 + 去「无订阅」弹窗（apt 钩子持久化，升级后自动重补丁）；可选一键系统更新 | 幂等 / 默认不更新系统 / 兼容 deb822 与 .list / 备份回滚 |
 
 ## 使用约定
 
@@ -52,11 +52,11 @@ sudo bash <(curl -sSL https://raw.githubusercontent.com/MOSSDATA-NETWORK/PVE-she
 # 预览（不写入，先看会改什么）
 sudo bash <(curl -sSL https://raw.githubusercontent.com/MOSSDATA-NETWORK/PVE-shell/main/pve-nosub.sh) --dry-run
 
-# 全部执行：禁用 enterprise 源 → 启用 no-subscription 源 → 去弹窗（含持久化钩子）→ 更新系统
+# 默认执行：禁用 enterprise 源 → 启用 no-subscription 源 → 去弹窗（含持久化钩子），不更新系统
 sudo bash <(curl -sSL https://raw.githubusercontent.com/MOSSDATA-NETWORK/PVE-shell/main/pve-nosub.sh)
 
-# 只换源和去弹窗，不执行系统更新
-sudo bash <(curl -sSL https://raw.githubusercontent.com/MOSSDATA-NETWORK/PVE-shell/main/pve-nosub.sh) --no-upgrade
+# 追加系统更新（全自动免交互：跳过变更日志阅读，配置冲突保留现有配置）
+sudo bash <(curl -sSL https://raw.githubusercontent.com/MOSSDATA-NETWORK/PVE-shell/main/pve-nosub.sh) --upgrade
 
 # 回滚到上次备份（含恢复弹窗）
 sudo bash <(curl -sSL https://raw.githubusercontent.com/MOSSDATA-NETWORK/PVE-shell/main/pve-nosub.sh) --restore

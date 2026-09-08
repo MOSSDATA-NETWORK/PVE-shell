@@ -9,12 +9,13 @@
 #      PVE 9 用 deb822 格式（.sources），PVE 7/8 用传统格式（.list）
 #   3. 补丁 proxmoxlib.js 去除登录后的无订阅弹窗，并安装 apt 钩子：
 #      每次 apt 升级覆盖 JS 文件后自动重新打补丁（持久化）
-#   4. apt-get update && dist-upgrade 更新系统
+#   4. （可选，--upgrade）apt-get update && dist-upgrade 更新系统，
+#      全自动免交互：跳过变更日志阅读、配置冲突保留现有配置、服务自动重启
 #
 # 用法：
-#   bash pve-nosub.sh                 # 全部执行（换源 + 去弹窗 + 更新）
+#   bash pve-nosub.sh                 # 换源 + 去弹窗（默认不更新系统）
+#   bash pve-nosub.sh --upgrade       # 换源 + 去弹窗 + 更新系统到最新
 #   bash pve-nosub.sh --dry-run       # 只打印不写入
-#   bash pve-nosub.sh --no-upgrade    # 只换源和去弹窗，不执行系统更新
 #   bash pve-nosub.sh --restore       # 回滚到上次备份（含恢复弹窗）
 #
 
@@ -38,7 +39,7 @@ title() { echo -e "\n${CYAN}━━━ $* ━━━${NC}"; }
 # 全局变量
 # ============================================================
 DRY_RUN=false
-DO_UPGRADE=true
+DO_UPGRADE=false
 BACKUP_DIR="/root/pve-nosub-backup/$(date +%Y%m%d_%H%M%S)"
 CODENAME=""
 NAG_HOOK_BIN="/usr/local/bin/pve-nag-patch"
@@ -338,12 +339,21 @@ do_upgrade() {
     title "更新系统"
 
     if $DRY_RUN; then
-        info "[dry-run] 将执行: apt-get update && apt-get dist-upgrade"
+        info "[dry-run] 将执行: apt-get update && apt-get dist-upgrade（全自动免交互）"
         return
     fi
 
+    # 全自动免交互：
+    #   DEBIAN_FRONTEND=noninteractive  跳过 debconf 提问
+    #   APT_LISTCHANGES_FRONTEND=none   跳过变更日志「阅读后才能继续」的分页
+    #   NEEDRESTART_MODE=a              服务需要重启时自动重启，不提问
+    #   confdef/confold                 配置文件冲突时保留现有配置，不提问
+    export DEBIAN_FRONTEND=noninteractive
+    export APT_LISTCHANGES_FRONTEND=none
+    export NEEDRESTART_MODE=a
+
     apt-get update
-    DEBIAN_FRONTEND=noninteractive apt-get -y \
+    apt-get -y \
         -o Dpkg::Options::=--force-confdef \
         -o Dpkg::Options::=--force-confold \
         dist-upgrade
@@ -423,9 +433,9 @@ summary() {
     echo "    ✔ no-subscription 源已启用（pve / ceph）"
     echo "    ✔ 无订阅弹窗已去除，并安装 apt 钩子持久化"
     if $DO_UPGRADE; then
-        echo "    ✔ 系统已更新（apt update + dist-upgrade）"
+        echo "    ✔ 系统已更新（apt update + dist-upgrade，全自动免交互）"
     else
-        echo "    - 系统更新已跳过（--no-upgrade）"
+        echo "    - 系统更新未执行（默认不更新，加 --upgrade 开启）"
     fi
     echo ""
     echo "  备份目录: ${BACKUP_DIR}"
@@ -458,22 +468,23 @@ main() {
                 DRY_RUN=true
                 warn "dry-run 模式：只打印，不写入"
                 ;;
-            --no-upgrade)
-                DO_UPGRADE=false
+            --upgrade)
+                DO_UPGRADE=true
                 ;;
             --help|-h)
                 echo "用法: $0 [选项]"
                 echo ""
                 echo "选项:"
+                echo "  --upgrade      换源后执行系统更新（默认不更新）"
+                echo "                 全自动免交互：跳过变更日志阅读，配置冲突保留现有配置"
                 echo "  --dry-run      只打印将执行的操作，不写入"
-                echo "  --no-upgrade   只换源和去弹窗，不执行系统更新"
                 echo "  --restore      回滚到上次备份（含恢复弹窗）"
                 echo "  --help, -h     显示帮助"
                 echo ""
                 echo "示例:"
-                echo "  bash $0                  # 换源 + 去弹窗 + 更新系统"
+                echo "  bash $0                  # 换源 + 去弹窗（不更新系统）"
+                echo "  bash $0 --upgrade        # 换源 + 去弹窗 + 更新系统到最新"
                 echo "  bash $0 --dry-run        # 预览模式"
-                echo "  bash $0 --no-upgrade     # 不更新系统"
                 exit 0
                 ;;
             *)
