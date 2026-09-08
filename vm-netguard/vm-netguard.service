@@ -1,0 +1,12 @@
+[Unit]
+Description=VM outbound guard: SMTP/BT drop + domain block (SNI/DNS)
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+ExecStart=/usr/local/sbin/vm-netguard.sh apply
+RemainAfterExit=yes
+
+[Install]
+WantedBy=multi-user.target
