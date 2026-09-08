@@ -21,25 +21,27 @@ Proxmox VE 实用脚本集。面向 PVE 母机的日常运维：VM 出网管控�
 
 **vm-netguard**（VM 出网管控）：
 ```bash
-git clone https://github.com/MOSSDATA-NETWORK/PVE-shell.git
-cd PVE-shell/vm-netguard
-sudo ./vm-netguard.sh install
+# 安装（脚本自包含，自动生成 systemd service）
+sudo bash <(curl -sSL https://raw.githubusercontent.com/MOSSDATA-NETWORK/PVE-shell/main/vm-netguard/vm-netguard.sh) install
+
+# 卸载
+sudo bash <(curl -sSL https://raw.githubusercontent.com/MOSSDATA-NETWORK/PVE-shell/main/vm-netguard/vm-netguard.sh) uninstall
 ```
 
 **pve-optimize.sh**（宿主机优化）：
 ```bash
 # 预览（不写入，先看会改什么）
-curl -fsSL https://raw.githubusercontent.com/MOSSDATA-NETWORK/PVE-shell/main/pve-optimize.sh | sudo bash -s -- --dry-run
+sudo bash <(curl -sSL https://raw.githubusercontent.com/MOSSDATA-NETWORK/PVE-shell/main/pve-optimize.sh) --dry-run
 
 # 执行优化（自动检测区域、备份原配置）
-curl -fsSL https://raw.githubusercontent.com/MOSSDATA-NETWORK/PVE-shell/main/pve-optimize.sh | sudo bash
+sudo bash <(curl -sSL https://raw.githubusercontent.com/MOSSDATA-NETWORK/PVE-shell/main/pve-optimize.sh)
 
 # 海外服务器指定 NTP 区域
-curl -fsSL https://raw.githubusercontent.com/MOSSDATA-NETWORK/PVE-shell/main/pve-optimize.sh | sudo bash -s -- --region intl
+sudo bash <(curl -sSL https://raw.githubusercontent.com/MOSSDATA-NETWORK/PVE-shell/main/pve-optimize.sh) --region intl
 
 # 香港服务器（北京时间 + 本地 NTP）
-curl -fsSL https://raw.githubusercontent.com/MOSSDATA-NETWORK/PVE-shell/main/pve-optimize.sh | sudo bash -s -- --region hk
+sudo bash <(curl -sSL https://raw.githubusercontent.com/MOSSDATA-NETWORK/PVE-shell/main/pve-optimize.sh) --region hk
 
 # 回滚到上次备份
-curl -fsSL https://raw.githubusercontent.com/MOSSDATA-NETWORK/PVE-shell/main/pve-optimize.sh | sudo bash -s -- --restore
+sudo bash <(curl -sSL https://raw.githubusercontent.com/MOSSDATA-NETWORK/PVE-shell/main/pve-optimize.sh) --restore
 ```
