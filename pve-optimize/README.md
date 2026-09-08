@@ -30,9 +30,6 @@
 ## 使用
 
 ```bash
-# 预览（不写入，先看会改什么）
-sudo bash <(curl -sSL https://raw.githubusercontent.com/MOSSDATA-NETWORK/PVE-shell/main/pve-optimize/pve-optimize.sh) --dry-run
-
 # 执行优化（自动检测区域、备份原配置）
 sudo bash <(curl -sSL https://raw.githubusercontent.com/MOSSDATA-NETWORK/PVE-shell/main/pve-optimize/pve-optimize.sh)
 
@@ -57,4 +54,4 @@ sudo bash <(curl -sSL https://raw.githubusercontent.com/MOSSDATA-NETWORK/PVE-she
 
 | 文件 | 说明 |
 |---|---|
-| `pve-optimize.sh` | 主脚本（默认优化；`--dry-run` / `--region` / `--restore`） |
+| `pve-optimize.sh` | 主脚本（默认优化；`--region` / `--restore`） |

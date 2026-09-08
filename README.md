@@ -31,9 +31,6 @@ sudo bash <(curl -sSL https://raw.githubusercontent.com/MOSSDATA-NETWORK/PVE-she
 
 **pve-optimize**（宿主机优化）：
 ```bash
-# 预览（不写入，先看会改什么）
-sudo bash <(curl -sSL https://raw.githubusercontent.com/MOSSDATA-NETWORK/PVE-shell/main/pve-optimize/pve-optimize.sh) --dry-run
-
 # 执行优化（自动检测区域、备份原配置）
 sudo bash <(curl -sSL https://raw.githubusercontent.com/MOSSDATA-NETWORK/PVE-shell/main/pve-optimize/pve-optimize.sh)
 

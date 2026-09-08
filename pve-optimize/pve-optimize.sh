@@ -6,7 +6,6 @@
 #
 # 用法：
 #   bash pve-optimize.sh                    # 执行优化（自动检测区域）
-#   bash pve-optimize.sh --dry-run          # 只打印不写入
 #   bash pve-optimize.sh --restore          # 回滚到上次备份
 #   bash pve-optimize.sh --region intl      # 海外服务器（国际 NTP，北京时间）
 #   bash pve-optimize.sh --region hk        # 香港服务器（本地 NTP，北京时间）
@@ -32,7 +31,6 @@ title() { echo -e "\n${CYAN}━━━ $* ━━━${NC}"; }
 # ============================================================
 # 全局变量
 # ============================================================
-DRY_RUN=false
 REGION="auto"
 BACKUP_DIR="/root/pve-optimize-backup/$(date +%Y%m%d_%H%M%S)"
 
@@ -233,31 +231,19 @@ root     soft   memlock   unlimited
 *     soft   memlock   unlimited
 "
 
-    if $DRY_RUN; then
-        info "[dry-run] 将写入 /etc/security/limits.conf"
-    else
-        echo "$limits_content" > /etc/security/limits.conf
-        info "已写入 /etc/security/limits.conf"
-    fi
+    echo "$limits_content" > /etc/security/limits.conf
+    info "已写入 /etc/security/limits.conf"
 
     # /etc/profile 中追加 ulimit
-    if $DRY_RUN; then
-        info "[dry-run] 将设置 ulimit -SHn ${P_NOFILE}"
-    else
-        sed -i '/ulimit -SHn/d' /etc/profile
-        echo "ulimit -SHn ${P_NOFILE}" >> /etc/profile
-        info "已设置 ulimit -SHn ${P_NOFILE}"
-    fi
+    sed -i '/ulimit -SHn/d' /etc/profile
+    echo "ulimit -SHn ${P_NOFILE}" >> /etc/profile
+    info "已设置 ulimit -SHn ${P_NOFILE}"
 
     # PAM
     if [[ -f /etc/pam.d/common-session ]]; then
         if ! grep -q "pam_limits.so" /etc/pam.d/common-session; then
-            if $DRY_RUN; then
-                info "[dry-run] 将追加 pam_limits.so"
-            else
-                echo "session required pam_limits.so" >> /etc/pam.d/common-session
-                info "已追加 pam_limits.so 到 common-session"
-            fi
+            echo "session required pam_limits.so" >> /etc/pam.d/common-session
+            info "已追加 pam_limits.so 到 common-session"
         else
             info "pam_limits.so 已存在，跳过"
         fi
@@ -277,13 +263,9 @@ DefaultLimitNPROC=${P_NOFILE}
 DefaultLimitMEMLOCK=infinity
 "
 
-    if $DRY_RUN; then
-        info "[dry-run] 将写入 /etc/systemd/system.conf"
-    else
-        echo "$sysconf_content" > /etc/systemd/system.conf
-        systemctl daemon-reload
-        info "已写入 /etc/systemd/system.conf 并 daemon-reload"
-    fi
+    echo "$sysconf_content" > /etc/systemd/system.conf
+    systemctl daemon-reload
+    info "已写入 /etc/systemd/system.conf 并 daemon-reload"
 }
 
 # ============================================================
@@ -297,13 +279,9 @@ SystemMaxUse=300M
 RuntimeMaxUse=100M
 "
 
-    if $DRY_RUN; then
-        info "[dry-run] 将写入 /etc/systemd/journald.conf"
-    else
-        echo "$journal_content" > /etc/systemd/journald.conf
-        systemctl restart systemd-journald
-        info "已限制 journald 日志为 300M"
-    fi
+    echo "$journal_content" > /etc/systemd/journald.conf
+    systemctl restart systemd-journald
+    info "已限制 journald 日志为 300M"
 }
 
 # ============================================================
@@ -418,16 +396,9 @@ net.ipv6.conf.default.accept_source_route=0
 EOF
 )
 
-    if $DRY_RUN; then
-        info "[dry-run] 将写入 /etc/sysctl.conf"
-        echo ""
-        echo "$sysctl_content"
-        echo ""
-    else
-        echo "$sysctl_content" > /etc/sysctl.conf
-        sysctl -p /etc/sysctl.conf > /dev/null 2>&1
-        info "已写入 /etc/sysctl.conf 并生效"
-    fi
+    echo "$sysctl_content" > /etc/sysctl.conf
+    sysctl -p /etc/sysctl.conf > /dev/null 2>&1
+    info "已写入 /etc/sysctl.conf 并生效"
 }
 
 # ============================================================
@@ -521,42 +492,27 @@ apply_timezone() {
     fi
 
     # 时区统一用北京时间（Asia/Shanghai = UTC+8）
-    if $DRY_RUN; then
-        info "[dry-run] 将设置时区为 Asia/Shanghai（北京时间）"
-    else
-        timedatectl set-timezone Asia/Shanghai
-        info "时区已设置为 Asia/Shanghai（北京时间）"
-    fi
+    timedatectl set-timezone Asia/Shanghai
+    info "时区已设置为 Asia/Shanghai（北京时间）"
 
     # 配置 chrony
     if command -v chronyd &>/dev/null || dpkg -l chrony &>/dev/null 2>&1; then
         local chrony_conf="/etc/chrony/chrony.conf"
-        if $DRY_RUN; then
-            info "[dry-run] 将配置 chrony（区域: ${REGION}）"
-            echo ""
-            get_chrony_conf "$REGION"
-            echo ""
-        else
-            [[ -f "$chrony_conf" ]] && cp -a "$chrony_conf" "${BACKUP_DIR}/chrony.conf.bak" 2>/dev/null || true
-            get_chrony_conf "$REGION" > "$chrony_conf"
-            systemctl enable chrony 2>/dev/null || systemctl enable chronyd 2>/dev/null || true
-            systemctl restart chrony 2>/dev/null || systemctl restart chronyd 2>/dev/null || true
-            info "已配置 chrony（区域: ${REGION}）并重启服务"
-        fi
+        [[ -f "$chrony_conf" ]] && cp -a "$chrony_conf" "${BACKUP_DIR}/chrony.conf.bak" 2>/dev/null || true
+        get_chrony_conf "$REGION" > "$chrony_conf"
+        systemctl enable chrony 2>/dev/null || systemctl enable chronyd 2>/dev/null || true
+        systemctl restart chrony 2>/dev/null || systemctl restart chronyd 2>/dev/null || true
+        info "已配置 chrony（区域: ${REGION}）并重启服务"
     else
         warn "未检测到 chrony，跳过 NTP 配置"
-        if ! $DRY_RUN; then
-            info "尝试安装 chrony..."
-            apt-get install -y chrony >/dev/null 2>&1 && info "chrony 安装成功" || warn "chrony 安装失败，请手动安装"
-        fi
+        info "尝试安装 chrony..."
+        apt-get install -y chrony >/dev/null 2>&1 && info "chrony 安装成功" || warn "chrony 安装失败，请手动安装"
     fi
 
     # 验证同步状态
-    if ! $DRY_RUN; then
-        if command -v chronyc &>/dev/null; then
-            info "当前同步状态:"
-            chronyc sources 2>/dev/null | head -8 || true
-        fi
+    if command -v chronyc &>/dev/null; then
+        info "当前同步状态:"
+        chronyc sources 2>/dev/null | head -8 || true
     fi
 }
 
@@ -570,10 +526,8 @@ ensure_bbr() {
         info "tcp_bbr 模块已加载"
     else
         warn "tcp_bbr 模块不可用，将使用默认拥塞控制算法"
-        if ! $DRY_RUN; then
-            sed -i 's/net.ipv4.tcp_congestion_control=bbr/net.ipv4.tcp_congestion_control=cubic/' /etc/sysctl.conf
-            sed -i 's/net.core.default_qdisc=fq/net.core.default_qdisc=pfifo_fast/' /etc/sysctl.conf
-        fi
+        sed -i 's/net.ipv4.tcp_congestion_control=bbr/net.ipv4.tcp_congestion_control=cubic/' /etc/sysctl.conf
+        sed -i 's/net.core.default_qdisc=fq/net.core.default_qdisc=pfifo_fast/' /etc/sysctl.conf
     fi
 }
 
@@ -591,29 +545,25 @@ apply_thp() {
     fi
 
     local current_enabled
-    current_enabled=$(cat "$thp_path/enabled" 2>/dev/null || echo "")
+    current_enabled=$(cat "$thp_path/enabled" 2>/dev/null || echo "unknown")
+    info "THP 当前: $current_enabled"
 
-    if $DRY_RUN; then
-        info "[dry-run] THP 当前: $current_enabled"
-        info "[dry-run] 将设为 madvise（避免 khugepaged 后台合并导致 VM 延迟毛刺）"
-    else
-        # 设为 madvise：只有显式请求的应用才用大页，VM 不受影响
-        echo madvise > "$thp_path/enabled"
-        # khugepaged 设为按需扫描，不主动合并
-        if [[ -d "$thp_path/khugepaged" ]]; then
-            echo 0 > "$thp_path/khugepaged/defrag"
-            echo 0 > "$thp_path/khugepaged/scan_sleep_millisecs"
-            echo 1 > "$thp_path/khugepaged/pages_to_scan" 2>/dev/null || true
-        fi
+    # 设为 madvise：只有显式请求的应用才用大页，VM 不受影响
+    echo madvise > "$thp_path/enabled"
+    # khugepaged 设为按需扫描，不主动合并
+    if [[ -d "$thp_path/khugepaged" ]]; then
+        echo 0 > "$thp_path/khugepaged/defrag"
+        echo 0 > "$thp_path/khugepaged/scan_sleep_millisecs"
+        echo 1 > "$thp_path/khugepaged/pages_to_scan" 2>/dev/null || true
+    fi
 
-        # 持久化：通过 systemd tmpfiles 或 rc.local
-        cat > /etc/tmpfiles.d/thp.conf <<'TMPF'
+    # 持久化：通过 systemd tmpfiles 或 rc.local
+    cat > /etc/tmpfiles.d/thp.conf <<'TMPF'
 w /sys/kernel/mm/transparent_hugepage/enabled - - - - madvise
 w /sys/kernel/mm/transparent_hugepage/khugepaged/defrag - - - - 0
 TMPF
 
-        info "THP 已设为 madvise，khugepaged 合并已关闭"
-    fi
+    info "THP 已设为 madvise，khugepaged 合并已关闭"
 }
 
 # ============================================================
@@ -632,41 +582,32 @@ apply_cpu_governor() {
             return
         fi
 
-        if $DRY_RUN; then
-            info "[dry-run] CPU 调频当前: $governors"
-            info "[dry-run] 将设为 performance（固定最高频率，消除 VM 因降频卡顿）"
-        else
-            for gov in /sys/devices/system/cpu/cpu*/cpufreq/scaling_governor; do
-                echo performance > "$gov" 2>/dev/null || true
-            done
+        info "CPU 调频当前: $governors"
+        for gov in /sys/devices/system/cpu/cpu*/cpufreq/scaling_governor; do
+            echo performance > "$gov" 2>/dev/null || true
+        done
 
-            # 持久化
-            if ! dpkg -l cpufrequtils &>/dev/null 2>&1; then
-                apt-get install -y cpufrequtils >/dev/null 2>&1 || true
-            fi
-            if [[ -f /etc/default/cpufrequtils ]]; then
-                sed -i 's/^GOVERNOR=.*/GOVERNOR="performance"/' /etc/default/cpufrequtils
-            else
-                echo 'GOVERNOR="performance"' > /etc/default/cpufrequtils
-            fi
-
-            info "CPU 调频已设为 performance"
+        # 持久化
+        if ! dpkg -l cpufrequtils &>/dev/null 2>&1; then
+            apt-get install -y cpufrequtils >/dev/null 2>&1 || true
         fi
+        if [[ -f /etc/default/cpufrequtils ]]; then
+            sed -i 's/^GOVERNOR=.*/GOVERNOR="performance"/' /etc/default/cpufrequtils
+        else
+            echo 'GOVERNOR="performance"' > /etc/default/cpufrequtils
+        fi
+
+        info "CPU 调频已设为 performance"
     else
         local current
         current=$(cat /sys/devices/system/cpu/cpu0/cpufreq/scaling_governor 2>/dev/null || echo "unknown")
 
-        if $DRY_RUN; then
-            info "[dry-run] CPU 调频当前: $current"
-            info "[dry-run] 将设为 performance"
-        else
-            if command -v cpupower &>/dev/null; then
-                cpupower frequency-set -g performance >/dev/null 2>&1
-            elif command -v cpufreq-set &>/dev/null; then
-                cpufreq-set -g performance -r >/dev/null 2>&1
-            fi
-            info "CPU 调频已设为 performance（当前: $current）"
+        if command -v cpupower &>/dev/null; then
+            cpupower frequency-set -g performance >/dev/null 2>&1
+        elif command -v cpufreq-set &>/dev/null; then
+            cpufreq-set -g performance -r >/dev/null 2>&1
         fi
+        info "CPU 调频已设为 performance（当前: $current）"
     fi
 }
 
@@ -683,8 +624,6 @@ apply_ksm() {
         return
     fi
 
-    local ksm_run
-    ksm_run=$(cat "$ksm_path/run" 2>/dev/null || echo "0")
 
     # 根据内存大小调整扫描参数
     local pages_to_scan sleep_ms
@@ -703,25 +642,19 @@ apply_ksm() {
             ;;
     esac
 
-    if $DRY_RUN; then
-        info "[dry-run] KSM 当前状态: run=$ksm_run"
-        info "[dry-run] 将启用 KSM 并设置扫描参数:"
-        info "[dry-run]   pages_to_scan=$pages_to_scan, sleep_ms=${sleep_ms}ms"
-    else
-        # 先设参数再启用，避免启用后用默认值狂扫
-        echo "$pages_to_scan" > "$ksm_path/pages_to_scan" 2>/dev/null || true
-        echo "$sleep_ms" > "$ksm_path/sleep_millisecs" 2>/dev/null || true
-        echo 1 > "$ksm_path/run"
+    # 先设参数再启用，避免启用后用默认值狂扫
+    echo "$pages_to_scan" > "$ksm_path/pages_to_scan" 2>/dev/null || true
+    echo "$sleep_ms" > "$ksm_path/sleep_millisecs" 2>/dev/null || true
+    echo 1 > "$ksm_path/run"
 
-        # 持久化
-        cat > /etc/tmpfiles.d/ksm.conf <<TMPF
+    # 持久化
+    cat > /etc/tmpfiles.d/ksm.conf <<TMPF
 w /sys/kernel/mm/ksm/pages_to_scan - - - - ${pages_to_scan}
 w /sys/kernel/mm/ksm/sleep_millisecs - - - - ${sleep_ms}
 w /sys/kernel/mm/ksm/run - - - - 1
 TMPF
 
-        info "KSM 已启用（pages_to_scan=$pages_to_scan, sleep=${sleep_ms}ms）"
-    fi
+    info "KSM 已启用（pages_to_scan=$pages_to_scan, sleep=${sleep_ms}ms）"
 }
 
 # ============================================================
@@ -759,35 +692,32 @@ apply_io_scheduler() {
             target_sched="bfq"
         fi
 
-        if $DRY_RUN; then
-            info "[dry-run] $name: 当前=$current → 目标=$target_sched"
+        info "$name: 当前=$current → 目标=$target_sched"
+        # 检查目标调度器是否可用
+        if grep -q "$target_sched" "$sched_file" 2>/dev/null; then
+            echo "$target_sched" > "$sched_file"
+            info "$name: $current → $target_sched"
         else
-            # 检查目标调度器是否可用
-            if grep -q "$target_sched" "$sched_file" 2>/dev/null; then
-                echo "$target_sched" > "$sched_file"
-                info "$name: $current → $target_sched"
-            else
-                # 回退到可用的第一个非 none 调度器
-                local fallback
-                fallback=$(sed 's/\[//g;s/\]//g' "$sched_file" | awk '{print $1}')
-                if [[ -n "$fallback" ]]; then
-                    echo "$fallback" > "$sched_file"
-                    warn "$name: $target_sched 不可用，回退到 $fallback"
-                fi
+            # 回退到可用的第一个非 none 调度器
+            local fallback
+            fallback=$(sed 's/\[//g;s/\]//g' "$sched_file" | awk '{print $1}')
+            if [[ -n "$fallback" ]]; then
+                echo "$fallback" > "$sched_file"
+                warn "$name: $target_sched 不可用，回退到 $fallback"
             fi
+        fi
 
-            # 持久化：udev 规则
-            local udev_rule="/etc/udev/rules.d/60-io-scheduler.rules"
-            if [[ ! -f "$udev_rule" ]] || ! grep -q "$name" "$udev_rule" 2>/dev/null; then
-                if [[ "$name" == nvme* ]]; then
-                    echo 'ACTION=="add|change", KERNEL=="nvme*", ATTR{queue/scheduler}="none"' >> "$udev_rule"
-                elif [[ "$name" == vd* ]]; then
-                    echo 'ACTION=="add|change", KERNEL=="vd*", ATTR{queue/scheduler}="none"' >> "$udev_rule"
-                elif cat "$dev/queue/rotational" 2>/dev/null | grep -q "0"; then
-                    echo 'ACTION=="add|change", KERNEL=="sd*", ATTR{queue/rotational}=="0", ATTR{queue/scheduler}="mq-deadline"' >> "$udev_rule"
-                else
-                    echo 'ACTION=="add|change", KERNEL=="sd*", ATTR{queue/rotational}=="1", ATTR{queue/scheduler}="bfq"' >> "$udev_rule"
-                fi
+        # 持久化：udev 规则
+        local udev_rule="/etc/udev/rules.d/60-io-scheduler.rules"
+        if [[ ! -f "$udev_rule" ]] || ! grep -q "$name" "$udev_rule" 2>/dev/null; then
+            if [[ "$name" == nvme* ]]; then
+                echo 'ACTION=="add|change", KERNEL=="nvme*", ATTR{queue/scheduler}="none"' >> "$udev_rule"
+            elif [[ "$name" == vd* ]]; then
+                echo 'ACTION=="add|change", KERNEL=="vd*", ATTR{queue/scheduler}="none"' >> "$udev_rule"
+            elif cat "$dev/queue/rotational" 2>/dev/null | grep -q "0"; then
+                echo 'ACTION=="add|change", KERNEL=="sd*", ATTR{queue/rotational}=="0", ATTR{queue/scheduler}="mq-deadline"' >> "$udev_rule"
+            else
+                echo 'ACTION=="add|change", KERNEL=="sd*", ATTR{queue/rotational}=="1", ATTR{queue/scheduler}="bfq"' >> "$udev_rule"
             fi
         fi
     done
@@ -803,9 +733,6 @@ apply_io_scheduler() {
 apply_dmesg() {
     title "dmesg 日志缓冲"
 
-    local current_size
-    current_size=$(dmesg --buffer-size 2>/dev/null || cat /proc/sys/kernel/printk_devkmsg 2>/dev/null || echo "unknown")
-
     # 根据内存大小设不同的 buffer
     local target_kb
     case "$TIER" in
@@ -814,27 +741,22 @@ apply_dmesg() {
         large)  target_kb=1048576 ;;  # 1M
     esac
 
-    if $DRY_RUN; then
-        info "[dry-run] dmesg 缓冲当前: $current_size"
-        info "[dry-run] 将设为 ${target_kb} 字节"
-    else
-        # 写入 sysctl
-        if ! grep -q "kernel.printk_devkmsg" /etc/sysctl.conf 2>/dev/null; then
-            echo "" >> /etc/sysctl.conf
-            echo "# --- dmesg 日志缓冲 ---" >> /etc/sysctl.conf
-            echo "kernel.printk_devkmsg=on" >> /etc/sysctl.conf
-        fi
-
-        # 通过 sysctl 设置 ring buffer 大小
-        sysctl -w kernel.dmesg_restrict=0 >/dev/null 2>&1 || true
-
-        # 持久化到 /etc/sysctl.conf
-        if ! grep -q "kernel.dmesg_restrict" /etc/sysctl.conf 2>/dev/null; then
-            echo "kernel.dmesg_restrict=0" >> /etc/sysctl.conf
-        fi
-
-        info "dmesg 缓冲已配置"
+    # 写入 sysctl
+    if ! grep -q "kernel.printk_devkmsg" /etc/sysctl.conf 2>/dev/null; then
+        echo "" >> /etc/sysctl.conf
+        echo "# --- dmesg 日志缓冲 ---" >> /etc/sysctl.conf
+        echo "kernel.printk_devkmsg=on" >> /etc/sysctl.conf
     fi
+
+    # 通过 sysctl 设置 ring buffer 大小
+    sysctl -w kernel.dmesg_restrict=0 >/dev/null 2>&1 || true
+
+    # 持久化到 /etc/sysctl.conf
+    if ! grep -q "kernel.dmesg_restrict" /etc/sysctl.conf 2>/dev/null; then
+        echo "kernel.dmesg_restrict=0" >> /etc/sysctl.conf
+    fi
+
+    info "dmesg 缓冲已配置（目标 ${target_kb} 字节）"
 }
 
 # ============================================================
@@ -878,24 +800,19 @@ apply_zfs_arc() {
     local current_arc
     current_arc=$(cat /sys/module/zfs/parameters/zfs_arc_max 2>/dev/null || echo "0")
 
-    if $DRY_RUN; then
-        info "[dry-run] ZFS ARC 当前限制: $(( current_arc / 1024 / 1024 ))M"
-        info "[dry-run] 将设为 ${arc_max_mb}M（内存的 ~$(( arc_max_mb * 100 / MEM_MB ))%）"
-    else
-        # 写入 modprobe 配置（重启生效）
-        cat > /etc/modprobe.d/zfs-arc.conf <<MODPROBE
+    # 写入 modprobe 配置（重启生效）
+    cat > /etc/modprobe.d/zfs-arc.conf <<MODPROBE
 # ZFS ARC 内存限制 — PVE 优化脚本自动生成
 # 预留内存给 VM，防止 ARC 膨胀导致 swap
 options zfs zfs_arc_max=${arc_max_bytes}
 options zfs zfs_arc_meta_limit=${arc_meta_bytes}
 MODPROBE
 
-        # 立即生效（运行时）
-        echo "$arc_max_bytes" > /sys/module/zfs/parameters/zfs_arc_max 2>/dev/null || true
-        echo "$arc_meta_bytes" > /sys/module/zfs/parameters/zfs_arc_meta_limit 2>/dev/null || true
+    # 立即生效（运行时）
+    echo "$arc_max_bytes" > /sys/module/zfs/parameters/zfs_arc_max 2>/dev/null || true
+    echo "$arc_meta_bytes" > /sys/module/zfs/parameters/zfs_arc_meta_limit 2>/dev/null || true
 
-        info "ZFS ARC 限制已设为 ${arc_max_mb}M"
-    fi
+    info "ZFS ARC 限制已设为 ${arc_max_mb}M（原为 $(( current_arc / 1024 / 1024 ))M）"
 }
 
 # ============================================================
@@ -1038,12 +955,8 @@ summary() {
     echo "    ✘ AppArmor"
     echo ""
 
-    if $DRY_RUN; then
-        warn "本次为 dry-run 模式，未实际写入任何文件"
-    else
-        info "优化已完成，建议重启宿主机使所有参数完全生效"
-        info "如需回滚: bash $0 --restore"
-    fi
+    info "优化已完成，建议重启宿主机使所有参数完全生效"
+    info "如需回滚: bash $0 --restore"
 }
 
 # ============================================================
@@ -1061,10 +974,6 @@ main() {
                 do_restore
                 exit 0
                 ;;
-            --dry-run)
-                DRY_RUN=true
-                warn "dry-run 模式：只打印，不写入"
-                ;;
             --region)
                 shift
                 case "${1:-}" in
@@ -1081,7 +990,6 @@ main() {
                 echo "用法: $0 [选项]"
                 echo ""
                 echo "选项:"
-                echo "  --dry-run          只打印参数，不写入"
                 echo "  --restore          回滚到上次备份"
                 echo "  --region <区域>    NTP 服务器区域: cn / hk / intl"
                 echo "                     时区始终为北京时间 (Asia/Shanghai)"
@@ -1090,10 +998,9 @@ main() {
                 echo ""
                 echo "示例:"
                 echo "  bash $0                        # 自动检测，国内/海外 NTP"
-                echo "  bash $0 --dry-run              # 预览模式"
                 echo "  bash $0 --region intl           # 海外服务器（国际 NTP）"
                 echo "  bash $0 --region hk             # 香港服务器（本地 NTP）"
-                echo "  bash $0 --region cn --dry-run   # 国内服务器预览"
+                echo "  bash $0 --region cn             # 国内服务器"
                 exit 0
                 ;;
             *)
@@ -1107,10 +1014,7 @@ main() {
     check_env
     detect_hardware
     calc_params
-
-    if ! $DRY_RUN; then
-        backup_configs
-    fi
+    backup_configs
 
     apply_ulimit
     apply_systemd_limits
@@ -1125,9 +1029,7 @@ main() {
     apply_zfs_arc
     apply_timezone
 
-    if ! $DRY_RUN; then
-        verify
-    fi
+    verify
 
     summary
 }
