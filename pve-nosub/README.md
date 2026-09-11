@@ -14,7 +14,7 @@
 | PVE 9 (trixie) | deb822 `.sources` | `pve-enterprise.sources` / `ceph.sources` 中的 enterprise 段加 `Enabled: no`，no-subscription 段启用；没有 pve-no-subscription 源则新建官方格式的 `proxmox.sources` |
 | PVE 7/8 (bullseye/bookworm) | 传统 `.list` | 注释 enterprise 行、取消注释官方预留的 no-subscription 行；没有则新建 `pve-no-subscription.list`；`ceph.list` 按原有 enterprise 行自动补对应版本的 no-subscription 源 |
 
-Debian 官方源（`debian.sources` 等）不动。全部操作幂等，重复执行不会产生重复条目。
+Debian 官方源（`debian.sources` 等）不动。全部操作可重复执行，不会产生重复条目。
 
 ## 去弹窗的持久化原理
 
