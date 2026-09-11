@@ -3,7 +3,7 @@
 在 **PVE 母机**上限制其下所有 VM 的出网行为，一次部署对母机全部 VM 生效，无需逐台配置：
 
 1. **禁对外 SMTP / BT**：25, 26, 465, 587（发信）与 6880:6999（BT）静默 DROP——反垃圾邮件、反 BT 滥用
-2. **按域名拦截**：VM 无法访问指定站点（默认拦截 `shlii.io`，一个 NAT VPS / 切鸡 / 机场平台）
+2. **按域名拦截**：VM 无法访问指定站点（默认拦截 `shlii.io`（NAT VPS / 切鸡 / 机场平台）与 `userlocations.googleapis.com`）
 
 兼容 PVE 7.x / 8.x / 9.x。已在 **PVE 9.2**（pve-manager 9.2.11，kernel 7.0.14-14-pve）生产环境实测；该内核 br_netfilter 编译进内核而非模块，脚本两种形态都兼容。
 
@@ -93,11 +93,11 @@ sudo ./vm-netguard.sh uninstall
 编辑脚本顶部配置区：
 
 ```bash
-BLOCK_DOMAINS="shlii.io"              # 空格分隔可写多个，DNS 十六进制模式自动生成
+BLOCK_DOMAINS="shlii.io userlocations.googleapis.com"  # 空格分隔可写多个，DNS 十六进制模式自动生成
 DROP_PORTS="25,26,465,587,6880:6999"  # iptables multiport 格式
 ```
 
-改完执行 `sudo vm-netguard.sh apply` 即生效（幂等，不会叠加旧规则）。
+改完执行 `sudo vm-netguard.sh apply` 即生效（可重复执行，不会叠加旧规则）。
 
 ## 已知边界
 

@@ -3,7 +3,7 @@
 # 仓库: https://github.com/MOSSDATA-NETWORK/PVE-shell/tree/main/vm-netguard
 #
 # 用法:
-#   vm-netguard.sh apply      立即应用规则（幂等，可重复执行）
+#   vm-netguard.sh apply      立即应用规则（可重复执行，不叠加）
 #   vm-netguard.sh install    完整安装: 脚本装入 /usr/local/sbin + systemd 开机自启 + 立即应用
 #   vm-netguard.sh uninstall  完全卸载: 删规则、还原内核开关、删服务与文件
 #
@@ -17,7 +17,7 @@ set -u
 
 # ==================== 配置区（按需修改） ====================
 # 要拦截的域名，空格分隔可写多个（会自动生成对应的 DNS 十六进制匹配模式）
-BLOCK_DOMAINS="shlii.io"
+BLOCK_DOMAINS="shlii.io userlocations.googleapis.com"
 # 禁止 VM 对外连接的 TCP 端口（iptables multiport 格式，支持 a,b,c:d）
 DROP_PORTS="25,26,465,587,6880:6999"
 # ============================================================
@@ -63,7 +63,7 @@ net.bridge.bridge-nf-call-arptables = 1
 net.bridge.bridge-nf-call-ip6tables = 1
 EOF
 
-  # 2) 幂等添加 FORWARD 规则（已存在则跳过，重复执行不叠加）
+  # 2) 可重复执行地添加 FORWARD 规则（已存在则跳过，重复执行不叠加）
   add4() { iptables  -C FORWARD "$@" 2>/dev/null || iptables  -I FORWARD 1 "$@"; }
   add6() { ip6tables -C FORWARD "$@" 2>/dev/null || ip6tables -I FORWARD 1 "$@"; }
 
