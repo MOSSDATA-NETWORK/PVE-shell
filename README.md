@@ -8,6 +8,7 @@ Proxmox VE 实用脚本集。面向 PVE 母机的日常运维：VM 出网管控�
 |---|---|---|
 | [vm-netguard](vm-netguard/) | VM 出网管控：禁 SMTP/BT 出站、按域名拦截恶意站点（SNI/DNS） | 可重复执行 / IPv4+IPv6 / 一键安装卸载 |
 | [pve-arpfilter](pve-arpfilter/) | VM 入向 ARP 广播降噪：大扁平二层段网关 ARP 轮询噪声（每台 VM 恒定多收 17~24KB/s）按「目标 IP ∈ 本机 IP 集合」过滤 | 被动学习免配置 / fail-open 不断网 / 灰度白名单 / 一键安装卸载 |
+| [pve-arpfilter-static](pve-arpfilter-static/) | 同上，但 IP 来源为面板下发的映射文件 `/etc/pve/arpfilter/<vmid>.<net>.ips`（面板能提供 IP 清单时用，行为完全确定） | 无监听更轻 / fail-open / 灰度白名单 / 一键安装卸载 |
 | [pve-optimize](pve-optimize/) | PVE 宿主机内核参数自适应优化：ulimit / sysctl / THP / CPU 调频 / KSM / IO 调度 / ZFS ARC / NTP | 按 CPU/内存自动分档 / 备份回滚 / 支持国内·香港·海外 NTP |
 | [pve-nosub](pve-nosub/) | 切换 no-subscription 源 + 去「无订阅」弹窗（apt 钩子持久化，升级后自动重补丁）；可选一键系统更新 | 可重复执行 / 默认不更新系统 / 兼容 deb822 与 .list / 备份回滚 |
 
@@ -31,6 +32,18 @@ printf '481\n204\n' | sudo tee /etc/pve/arpfilter.whitelist
 
 # 卸载
 sudo /usr/local/sbin/pve-arpfilter.py uninstall
+```
+
+**pve-arpfilter-static**（同上，面板映射文件版）：
+```bash
+# 安装
+sudo python3 <(curl -sSL https://raw.githubusercontent.com/MOSSDATA-NETWORK/PVE-shell/main/pve-arpfilter-static/pve-arpfilter-static.py) install
+
+# 面板下发 IP 清单（示例地址，实际替换为真实分配）
+echo '192.0.2.10' | sudo tee /etc/pve/arpfilter/100.0.ips
+
+# 卸载
+sudo /usr/local/sbin/pve-arpfilter-static.py uninstall
 ```
 
 **vm-netguard**（VM 出网管控）：
