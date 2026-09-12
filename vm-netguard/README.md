@@ -50,9 +50,7 @@ QUIC/UDP 443 必须拦：只拦 TCP 时，xray 系工具和浏览器会自动降
 ## 安装
 
 ```bash
-git clone https://github.com/MOSSDATA-NETWORK/PVE-shell.git
-cd PVE-shell/vm-netguard
-./vm-netguard.sh install
+bash <(curl -sSL https://raw.githubusercontent.com/MOSSDATA-NETWORK/PVE-shell/main/vm-netguard/vm-netguard.sh) install
 ```
 
 `install` 做三件事：脚本装入 `/usr/local/sbin/vm-netguard.sh`、注册 systemd 开机自启（`vm-netguard.service`）、立即应用规则。母机重启后规则自动恢复。
@@ -60,7 +58,7 @@ cd PVE-shell/vm-netguard
 只想临时应用（不持久化）：
 
 ```bash
-./vm-netguard.sh apply
+bash <(curl -sSL https://raw.githubusercontent.com/MOSSDATA-NETWORK/PVE-shell/main/vm-netguard/vm-netguard.sh) apply
 ```
 
 ## 验证
@@ -83,7 +81,7 @@ iptables -nvL FORWARD | grep -E 'shlii|multiport'
 ## 卸载（干净回滚）
 
 ```bash
-./vm-netguard.sh uninstall
+/usr/local/sbin/vm-netguard.sh uninstall
 ```
 
 删规则、还原三个内核开关、删服务与文件，约 30 秒还原到部署前状态。
