@@ -31,13 +31,13 @@
 
 ```bash
 # 执行优化（自动检测区域、备份原配置）
-sudo bash <(curl -sSL https://raw.githubusercontent.com/MOSSDATA-NETWORK/PVE-shell/main/pve-optimize/pve-optimize.sh)
+bash <(curl -sSL https://raw.githubusercontent.com/MOSSDATA-NETWORK/PVE-shell/main/pve-optimize/pve-optimize.sh)
 
 # 指定 NTP 区域：cn 国内 / hk 香港 / intl 海外（默认按当前时区自动检测）
-sudo bash <(curl -sSL https://raw.githubusercontent.com/MOSSDATA-NETWORK/PVE-shell/main/pve-optimize/pve-optimize.sh) --region intl
+bash <(curl -sSL https://raw.githubusercontent.com/MOSSDATA-NETWORK/PVE-shell/main/pve-optimize/pve-optimize.sh) --region intl
 
 # 回滚到上次备份
-sudo bash <(curl -sSL https://raw.githubusercontent.com/MOSSDATA-NETWORK/PVE-shell/main/pve-optimize/pve-optimize.sh) --restore
+bash <(curl -sSL https://raw.githubusercontent.com/MOSSDATA-NETWORK/PVE-shell/main/pve-optimize/pve-optimize.sh) --restore
 ```
 
 执行后建议重启宿主机使全部参数生效。

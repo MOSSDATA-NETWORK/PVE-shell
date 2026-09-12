@@ -25,59 +25,59 @@ Proxmox VE 实用脚本集。面向 PVE 母机的日常运维：VM 出网管控�
 **pve-arpfilter**（VM 入向 ARP 广播降噪）：
 ```bash
 # 安装（脚本自包含，自动生成 systemd service）
-sudo python3 <(curl -sSL https://raw.githubusercontent.com/MOSSDATA-NETWORK/PVE-shell/main/pve-arpfilter/pve-arpfilter.py) install
+python3 <(curl -sSL https://raw.githubusercontent.com/MOSSDATA-NETWORK/PVE-shell/main/pve-arpfilter/pve-arpfilter.py) install
 
 # 灰度（只对列出的 VM 装规则）
-printf '481\n204\n' | sudo tee /etc/pve/arpfilter.whitelist
+printf '481\n204\n' | tee /etc/pve/arpfilter.whitelist
 
 # 卸载
-sudo /usr/local/sbin/pve-arpfilter.py uninstall
+/usr/local/sbin/pve-arpfilter.py uninstall
 ```
 
 **pve-arpfilter-static**（同上，面板映射文件版）：
 ```bash
 # 安装
-sudo python3 <(curl -sSL https://raw.githubusercontent.com/MOSSDATA-NETWORK/PVE-shell/main/pve-arpfilter-static/pve-arpfilter-static.py) install
+python3 <(curl -sSL https://raw.githubusercontent.com/MOSSDATA-NETWORK/PVE-shell/main/pve-arpfilter-static/pve-arpfilter-static.py) install
 
 # 面板下发 IP 清单（示例地址，实际替换为真实分配）
-echo '192.0.2.10' | sudo tee /etc/pve/arpfilter/100.0.ips
+echo '192.0.2.10' | tee /etc/pve/arpfilter/100.0.ips
 
 # 卸载
-sudo /usr/local/sbin/pve-arpfilter-static.py uninstall
+/usr/local/sbin/pve-arpfilter-static.py uninstall
 ```
 
 **vm-netguard**（VM 出网管控）：
 ```bash
 # 安装（脚本自包含，自动生成 systemd service）
-sudo bash <(curl -sSL https://raw.githubusercontent.com/MOSSDATA-NETWORK/PVE-shell/main/vm-netguard/vm-netguard.sh) install
+bash <(curl -sSL https://raw.githubusercontent.com/MOSSDATA-NETWORK/PVE-shell/main/vm-netguard/vm-netguard.sh) install
 
 # 卸载
-sudo bash <(curl -sSL https://raw.githubusercontent.com/MOSSDATA-NETWORK/PVE-shell/main/vm-netguard/vm-netguard.sh) uninstall
+bash <(curl -sSL https://raw.githubusercontent.com/MOSSDATA-NETWORK/PVE-shell/main/vm-netguard/vm-netguard.sh) uninstall
 ```
 
 **pve-optimize**（宿主机优化）：
 ```bash
 # 执行优化（自动检测区域、备份原配置）
-sudo bash <(curl -sSL https://raw.githubusercontent.com/MOSSDATA-NETWORK/PVE-shell/main/pve-optimize/pve-optimize.sh)
+bash <(curl -sSL https://raw.githubusercontent.com/MOSSDATA-NETWORK/PVE-shell/main/pve-optimize/pve-optimize.sh)
 
 # 海外服务器指定 NTP 区域
-sudo bash <(curl -sSL https://raw.githubusercontent.com/MOSSDATA-NETWORK/PVE-shell/main/pve-optimize/pve-optimize.sh) --region intl
+bash <(curl -sSL https://raw.githubusercontent.com/MOSSDATA-NETWORK/PVE-shell/main/pve-optimize/pve-optimize.sh) --region intl
 
 # 香港服务器（北京时间 + 本地 NTP）
-sudo bash <(curl -sSL https://raw.githubusercontent.com/MOSSDATA-NETWORK/PVE-shell/main/pve-optimize/pve-optimize.sh) --region hk
+bash <(curl -sSL https://raw.githubusercontent.com/MOSSDATA-NETWORK/PVE-shell/main/pve-optimize/pve-optimize.sh) --region hk
 
 # 回滚到上次备份
-sudo bash <(curl -sSL https://raw.githubusercontent.com/MOSSDATA-NETWORK/PVE-shell/main/pve-optimize/pve-optimize.sh) --restore
+bash <(curl -sSL https://raw.githubusercontent.com/MOSSDATA-NETWORK/PVE-shell/main/pve-optimize/pve-optimize.sh) --restore
 ```
 
 **pve-nosub**（换 no-subscription 源 + 去弹窗）：
 ```bash
 # 默认执行：禁用 enterprise 源 → 启用 no-subscription 源 → 去弹窗（含持久化钩子），不更新系统
-sudo bash <(curl -sSL https://raw.githubusercontent.com/MOSSDATA-NETWORK/PVE-shell/main/pve-nosub/pve-nosub.sh)
+bash <(curl -sSL https://raw.githubusercontent.com/MOSSDATA-NETWORK/PVE-shell/main/pve-nosub/pve-nosub.sh)
 
 # 追加系统更新（全自动免交互：跳过变更日志阅读，配置冲突保留现有配置）
-sudo bash <(curl -sSL https://raw.githubusercontent.com/MOSSDATA-NETWORK/PVE-shell/main/pve-nosub/pve-nosub.sh) --upgrade
+bash <(curl -sSL https://raw.githubusercontent.com/MOSSDATA-NETWORK/PVE-shell/main/pve-nosub/pve-nosub.sh) --upgrade
 
 # 回滚到上次备份（含恢复弹窗）
-sudo bash <(curl -sSL https://raw.githubusercontent.com/MOSSDATA-NETWORK/PVE-shell/main/pve-nosub/pve-nosub.sh) --restore
+bash <(curl -sSL https://raw.githubusercontent.com/MOSSDATA-NETWORK/PVE-shell/main/pve-nosub/pve-nosub.sh) --restore
 ```

@@ -35,10 +35,10 @@ PVE 母机 VM 入向 ARP 广播降噪 · **面板映射文件版**。
 
 ```bash
 # 安装（脚本自包含，自动生成 systemd service，自动建映射目录）
-sudo python3 <(curl -sSL https://raw.githubusercontent.com/MOSSDATA-NETWORK/PVE-shell/main/pve-arpfilter-static/pve-arpfilter-static.py) install
+python3 <(curl -sSL https://raw.githubusercontent.com/MOSSDATA-NETWORK/PVE-shell/main/pve-arpfilter-static/pve-arpfilter-static.py) install
 
 # 面板下发示例
-echo '192.0.2.10' | sudo tee /etc/pve/arpfilter/100.0.ips
+echo '192.0.2.10' | tee /etc/pve/arpfilter/100.0.ips
 
 # 状态
 /usr/local/sbin/pve-arpfilter-static.py status

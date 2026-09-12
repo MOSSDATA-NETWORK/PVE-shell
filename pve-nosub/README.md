@@ -30,13 +30,13 @@ Debian 官方源（`debian.sources` 等）不动。全部操作可重复执行�
 
 ```bash
 # 换源 + 去弹窗（默认不更新系统）
-sudo bash <(curl -sSL https://raw.githubusercontent.com/MOSSDATA-NETWORK/PVE-shell/main/pve-nosub/pve-nosub.sh)
+bash <(curl -sSL https://raw.githubusercontent.com/MOSSDATA-NETWORK/PVE-shell/main/pve-nosub/pve-nosub.sh)
 
 # 追加系统更新：所有可更新项装到最新，全自动免交互
-sudo bash <(curl -sSL https://raw.githubusercontent.com/MOSSDATA-NETWORK/PVE-shell/main/pve-nosub/pve-nosub.sh) --upgrade
+bash <(curl -sSL https://raw.githubusercontent.com/MOSSDATA-NETWORK/PVE-shell/main/pve-nosub/pve-nosub.sh) --upgrade
 
 # 回滚（恢复 enterprise 源、恢复弹窗、删除钩子与新建文件）
-sudo bash <(curl -sSL https://raw.githubusercontent.com/MOSSDATA-NETWORK/PVE-shell/main/pve-nosub/pve-nosub.sh) --restore
+bash <(curl -sSL https://raw.githubusercontent.com/MOSSDATA-NETWORK/PVE-shell/main/pve-nosub/pve-nosub.sh) --restore
 ```
 
 `--upgrade` 的免交互策略：跳过变更日志分页阅读（`APT_LISTCHANGES_FRONTEND=none`）、配置文件冲突保留现有配置（`confdef/confold`）、服务自动重启（`NEEDRESTART_MODE=a`）。内核更新后脚本会提示重启。

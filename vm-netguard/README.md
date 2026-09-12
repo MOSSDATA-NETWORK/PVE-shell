@@ -52,7 +52,7 @@ QUIC/UDP 443 必须拦：只拦 TCP 时，xray 系工具和浏览器会自动降
 ```bash
 git clone https://github.com/MOSSDATA-NETWORK/PVE-shell.git
 cd PVE-shell/vm-netguard
-sudo ./vm-netguard.sh install
+./vm-netguard.sh install
 ```
 
 `install` 做三件事：脚本装入 `/usr/local/sbin/vm-netguard.sh`、注册 systemd 开机自启（`vm-netguard.service`）、立即应用规则。母机重启后规则自动恢复。
@@ -60,7 +60,7 @@ sudo ./vm-netguard.sh install
 只想临时应用（不持久化）：
 
 ```bash
-sudo ./vm-netguard.sh apply
+./vm-netguard.sh apply
 ```
 
 ## 验证
@@ -83,7 +83,7 @@ iptables -nvL FORWARD | grep -E 'shlii|multiport'
 ## 卸载（干净回滚）
 
 ```bash
-sudo ./vm-netguard.sh uninstall
+./vm-netguard.sh uninstall
 ```
 
 删规则、还原三个内核开关、删服务与文件，约 30 秒还原到部署前状态。
@@ -97,7 +97,7 @@ BLOCK_DOMAINS="shlii.io userlocations.googleapis.com"  # 空格分隔可写多�
 DROP_PORTS="25,26,465,587,6880:6999"  # iptables multiport 格式
 ```
 
-改完执行 `sudo vm-netguard.sh apply` 即生效（可重复执行，不会叠加旧规则）。
+改完执行 `vm-netguard.sh apply` 即生效（可重复执行，不会叠加旧规则）。
 
 ## 已知边界
 
