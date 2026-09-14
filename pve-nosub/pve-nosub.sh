@@ -273,37 +273,48 @@ patch_expr() {
     [[ -f "$f.nagbak" ]] || cp -a "$f" "$f.nagbak"
 
     local before after
-    before=$(grep -cE "$re" "$f")
+    before=$(grep -oE "$re" "$f" | wc -l)
     sed -i -E "s/$re/false/g" "$f"
     after=$(grep -cE "$re" "$f" || true)
 
     if [[ "$after" != "0" ]] || ! js_check "$f"; then
         cp -a "$f.nagbak" "$f"
         echo "error: patched($label) 补丁异常，已回滚: $f" >&2
+        echo "hint: .nagbak 可能滞后于包版本，建议执行: apt-get install --reinstall proxmox-widget-toolkit pve-manager" >&2
         return 1
     fi
     echo "patched($label): $f（替换 ${before} 处）"
     return 0
 }
 
+# 执行补丁并记录失败（仅返回 1 视为失败；返回 2 为无目标，不算失败）
+rc=0
+try_patch() {
+    patch_expr "$@"
+    local r=$?
+    [[ $r -eq 1 ]] && rc=1
+    return 0
+}
+
 major=$(detect_major)
 case "$major" in
     5|6)
-        patch_expr "$MANAGER_JS" "$RE_LEGACY" "legacy-status"
+        try_patch "$MANAGER_JS" "$RE_LEGACY" "legacy-status"
         ;;
     7|8|9)
-        patch_expr "$WIDGET_JS" "$RE_MODERN" "active-check"
+        try_patch "$WIDGET_JS" "$RE_MODERN" "active-check"
         ;;
     *)
         # 未知/未来版本：特征扫描兜底；仍有已知特征未命中则告警（此时钩子保留，源配置不受影响）
-        patch_expr "$WIDGET_JS" "$RE_MODERN" "active-check" || true
-        patch_expr "$MANAGER_JS" "$RE_LEGACY" "legacy-status" || true
+        try_patch "$WIDGET_JS" "$RE_MODERN" "active-check"
+        try_patch "$MANAGER_JS" "$RE_LEGACY" "legacy-status"
         if grep -qE "$RE_MODERN" "$WIDGET_JS" 2>/dev/null || grep -qE "$RE_LEGACY" "$MANAGER_JS" 2>/dev/null; then
             echo "warn: 未识别的 pve-manager 主版本 ($major)，存在未能补丁的弹窗特征" >&2
+            rc=1
         fi
         ;;
 esac
-exit 0
+exit $rc
 PATCH_EOF
 }
 
@@ -319,10 +330,10 @@ remove_nag() {
     mark_created "$NAG_HOOK_BIN"
     info "已安装补丁脚本: $NAG_HOOK_BIN"
 
-    # 2. 安装 apt 钩子：每次 apt/dpkg 成功后自动重新补丁
+    # 2. 安装 apt 钩子：每次 apt/dpkg 成功后自动重新补丁（日志落盘，失败可查）
     cat > "$NAG_HOOK_APT" <<EOF
 // pve-nosub.sh 安装：升级覆盖 JS 文件后自动重新去除无订阅弹窗
-DPkg::Post-Invoke-Success { "if [ -x $NAG_HOOK_BIN ]; then $NAG_HOOK_BIN >/dev/null 2>&1; fi; true"; };
+DPkg::Post-Invoke-Success { "if [ -x $NAG_HOOK_BIN ]; then $NAG_HOOK_BIN >>/var/log/pve-nag-patch.log 2>&1 || true; fi; true"; };
 EOF
     mark_created "$NAG_HOOK_APT"
     info "已安装 apt 钩子: $NAG_HOOK_APT"
@@ -417,6 +428,10 @@ do_restore() {
             info "已恢复弹窗 JS: $js"
         fi
     done
+
+    # .nagbak 只创建不更新，期间若有过包升级，备份可能滞后于当前包版本
+    warn "提示: 若备份后经历过 PVE 升级，建议用包管理器还原为与当前包完全一致的原文件:"
+    warn "  apt-get install --reinstall proxmox-widget-toolkit pve-manager"
 
     info "恢复完成！建议执行: apt-get update"
 }
