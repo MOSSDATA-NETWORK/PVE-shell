@@ -22,9 +22,10 @@ Debian 官方源（`debian.sources` 等）不动。全部操作可重复执行�
 
 本脚本的解法：
 
-1. 补丁逻辑落在独立脚本 `/usr/local/bin/pve-nag-patch`（兼容新旧写法：`res.data.status`、可选链 `res?.data?.status`、PVE 6 及更早的多行 `Ext.Msg.show`）
-2. 安装 apt 钩子 `/etc/apt/apt.conf.d/90pve-no-nag`（`DPkg::Post-Invoke-Success`），**每次 apt 安装/升级成功后自动重跑补丁**
-3. 补丁前就地备份 `.nagbak`，`--restore` 可还原
+1. 补丁逻辑落在独立脚本 `/usr/local/bin/pve-nag-patch`，**按 pve-manager 主版本选择策略**：PVE 5/6 补丁 `pvemanagerlib.js` 的 `data.status !== 'Active'`，PVE 7/8/9 补丁 `proxmoxlib.js` 的 `res.data.status.toLowerCase() !== 'active'`（兼容可选链写法，全部出现位置），未知版本特征扫描兜底
+2. **只做表达式级替换**（布尔表达式 → `false`），从不增删语句或括号——从机制上杜绝网上流传 nosub 脚本 `void({` 改法破坏 JS 括号平衡导致管理页白屏的问题
+3. 安装 apt 钩子 `/etc/apt/apt.conf.d/90pve-no-nag`（`DPkg::Post-Invoke-Success`），**每次 apt 安装/升级成功后自动重跑补丁**
+4. 补丁前就地备份 `.nagbak`，替换不彻底或语法校验失败自动回滚；`--restore` 可还原
 
 ## 使用
 

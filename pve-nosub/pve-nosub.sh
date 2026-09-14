@@ -231,38 +231,78 @@ nag_patch_script() {
 #!/bin/bash
 # 由 pve-nosub.sh 安装：去除 PVE「无有效订阅」登录弹窗
 # apt 钩子在每次 dpkg 操作成功后调用本脚本，包升级覆盖 JS 后自动重新补丁
+#
+# 版本策略（按 pve-manager 主版本选择，未知版本特征扫描兜底）:
+#   PVE 5/6   — 弹窗在 pvemanagerlib.js，补丁 data.status !== 'Active'
+#   PVE 7/8/9 — 弹窗在 proxmoxlib.js，补丁 res.data.status... !== 'active'（全部出现位置）
+# 安全原则: 只做「表达式级」替换（布尔表达式 → false），从不增删语句或括号，
+#           从机制上杜绝 JS 语法破坏导致管理页白屏
 set -u
 
-patch_file() {
-    local f="$1"
-    [[ -f "$f" ]] || return 0
-    grep -q "No valid sub" "$f" || return 0
+WIDGET_JS="/usr/share/javascript/proxmox-widget-toolkit/proxmoxlib.js"
+MANAGER_JS="/usr/share/pve-manager/js/pvemanagerlib.js"
 
-    # PVE 7/8/9（proxmox-widget-toolkit）：订阅状态判断改为恒假
-    # 兼容 res.data.status 与可选链 res?.data?.status
-    if grep -qE "res(\?)?\.data(\?)?\.status(\?)?\.toLowerCase\(\) !== 'active'" "$f"; then
-        [[ -f "$f.nagbak" ]] || cp -a "$f" "$f.nagbak"
-        sed -i -E "s/res(\?)?\.data(\?)?\.status(\?)?\.toLowerCase\(\) !== 'active'/false/g" "$f"
-        echo "patched(active-check): $f"
-    fi
+# 现代版特征（PVE 7/8/9）：兼容 res.data.status 与可选链 res?.data?.status
+RE_MODERN="res(\?)?\.data(\?)?\.status(\?)?\.toLowerCase\(\) !== 'active'"
+# 旧版特征（PVE 5/6）
+RE_LEGACY="data\.status !== 'Active'"
 
-    # PVE 5/6（pvemanagerlib.js 旧判断）
-    if grep -q "data.status !== 'Active'" "$f"; then
-        [[ -f "$f.nagbak" ]] || cp -a "$f" "$f.nagbak"
-        sed -i "s/data\.status !== 'Active'/false/g" "$f"
-        echo "patched(legacy-status): $f"
-    fi
+# 检测 pve-manager 主版本号；检测失败输出 0
+detect_major() {
+    local v
+    v=$(dpkg-query -W -f='${Version}' pve-manager 2>/dev/null | cut -d. -f1)
+    [[ "$v" =~ ^[0-9]+$ ]] || v=0
+    echo "$v"
+}
 
-    # PVE 6 及更早：多行 Ext.Msg.show 弹窗整体置空
-    if grep -q "Ext.Msg.show({" "$f" && grep -q "title: gettext('No valid sub" "$f"; then
-        [[ -f "$f.nagbak" ]] || cp -a "$f" "$f.nagbak"
-        sed -i -z -E "s/(Ext\.Msg\.show\(\{\s*title: gettext\('No valid sub)/void(\{ \1/g" "$f"
-        echo "patched(msg-show): $f"
+# JS 语法校验（有 node 才做；表达式级替换本身安全，此为额外保险）
+js_check() {
+    if command -v node >/dev/null 2>&1; then
+        node --check "$1" 2>/dev/null
+    else
+        return 0
     fi
 }
 
-patch_file /usr/share/javascript/proxmox-widget-toolkit/proxmoxlib.js
-patch_file /usr/share/pve-manager/js/pvemanagerlib.js
+# 对单个文件按给定正则补丁。返回: 0=本次打了补丁 2=无目标(已补丁或不适用) 1=失败已回滚
+patch_expr() {
+    local f="$1" re="$2" label="$3"
+    [[ -f "$f" ]] || return 2
+    grep -qE "$re" "$f" || return 2
+
+    [[ -f "$f.nagbak" ]] || cp -a "$f" "$f.nagbak"
+
+    local before after
+    before=$(grep -cE "$re" "$f")
+    sed -i -E "s/$re/false/g" "$f"
+    after=$(grep -cE "$re" "$f" || true)
+
+    if [[ "$after" != "0" ]] || ! js_check "$f"; then
+        cp -a "$f.nagbak" "$f"
+        echo "error: patched($label) 补丁异常，已回滚: $f" >&2
+        return 1
+    fi
+    echo "patched($label): $f（替换 ${before} 处）"
+    return 0
+}
+
+major=$(detect_major)
+case "$major" in
+    5|6)
+        patch_expr "$MANAGER_JS" "$RE_LEGACY" "legacy-status"
+        ;;
+    7|8|9)
+        patch_expr "$WIDGET_JS" "$RE_MODERN" "active-check"
+        ;;
+    *)
+        # 未知/未来版本：特征扫描兜底；仍有已知特征未命中则告警（此时钩子保留，源配置不受影响）
+        patch_expr "$WIDGET_JS" "$RE_MODERN" "active-check" || true
+        patch_expr "$MANAGER_JS" "$RE_LEGACY" "legacy-status" || true
+        if grep -qE "$RE_MODERN" "$WIDGET_JS" 2>/dev/null || grep -qE "$RE_LEGACY" "$MANAGER_JS" 2>/dev/null; then
+            echo "warn: 未识别的 pve-manager 主版本 ($major)，存在未能补丁的弹窗特征" >&2
+        fi
+        ;;
+esac
 exit 0
 PATCH_EOF
 }
