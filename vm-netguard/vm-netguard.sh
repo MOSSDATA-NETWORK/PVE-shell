@@ -17,7 +17,7 @@ set -u
 
 # ==================== 配置区（按需修改） ====================
 # 要拦截的域名，空格分隔可写多个（会自动生成对应的 DNS 十六进制匹配模式）
-BLOCK_DOMAINS="shlii.io dlynankz.biz userlocations.googleapis.com"
+BLOCK_DOMAINS="shlii.io userlocations.googleapis.com"
 # 禁止 VM 对外连接的 TCP 端口（iptables multiport 格式，支持 a,b,c:d）
 DROP_PORTS="25,26,465,587,6880:6999"
 # ============================================================
